@@ -1,0 +1,8 @@
+-r ./requirements.in
+
+ruff
+mypy
+isort
+bandit
+black
+psycopg2-binary
