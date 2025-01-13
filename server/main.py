@@ -5,6 +5,7 @@
 __author__ = "pv.kosarev"
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from server.api.endpoints.base import base_router
 from server.config import settings
@@ -20,6 +21,8 @@ app = FastAPI(
     openapi_url="/api/bday_time/openapi.json",
     docs_url="/api/bday_time/docs",
 )
+
+app.mount("/static", StaticFiles(directory="server/static"), name="static")
 
 app.include_router(
     base_router,

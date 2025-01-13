@@ -10,3 +10,8 @@ alembic upgrade head
 alembic upgrade +1
 
 alembic downgrade -1
+
+
+
+# other style options
+https://codepen.io/Markshall/pen/ExPxpYX
