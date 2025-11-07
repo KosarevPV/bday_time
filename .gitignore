@@ -174,3 +174,4 @@ alembic.env
 docker_pg_data
 init_db
 logs
+.qodo

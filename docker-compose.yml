@@ -23,6 +23,16 @@ services:
         condition: service_healthy
     networks:
       - internal_network
+
+  migrate:
+    build:
+      dockerfile: ./server/Dockerfile
+    env_file: service.env
+    entrypoint: ["alembic", "upgrade", "head"]
+    depends_on:
+      - db
+    networks:
+      - internal_network
   db:
     image: postgres:16.6
     environment:

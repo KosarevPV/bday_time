@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     DB_NAME: str
     DB_SCHEMA: str
 
+    DATABASE_URL: str
+
     DEBUG: bool
     LOG_LEVEL: str = "INFO"
 

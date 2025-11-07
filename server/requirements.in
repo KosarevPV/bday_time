@@ -8,3 +8,4 @@ httpx
 python-dotenv
 python-multipart
 Jinja2
+psycopg2-binary
