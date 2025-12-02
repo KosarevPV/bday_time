@@ -21,6 +21,7 @@ class HttpMethod(StrEnum):
     GET = "GET"
     PATCH = "PATCH"
     POST = "POST"
+    PUT = "PUT"
 
 
 async def async_request(
@@ -59,4 +60,3 @@ async def async_request(
             files=files,
             timeout=timeout,
         )
-

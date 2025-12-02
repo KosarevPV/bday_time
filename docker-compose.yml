@@ -18,19 +18,35 @@ services:
     volumes:
       - ./server:/app
     env_file: service.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     depends_on:
       db:
         condition: service_healthy
     networks:
       - internal_network
-
+  bday_time_bot:
+    build:
+      dockerfile: ./bot/Dockerfile
+    volumes:
+      - ./bot:/app
+    env_file: bot_service.env
+    # depends_on:
+    #   bday_time_service:
+    #     condition: service_healthy
+    networks:
+      - internal_network
   migrate:
     build:
       dockerfile: ./server/Dockerfile
     env_file: service.env
     entrypoint: ["alembic", "upgrade", "head"]
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - internal_network
   db:

@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     API_DESCRIPTION: str
     API_VERSION: str
 
+    MICROSERVICE_KEY: str
+
     APP_SECRET_KEY: str
 
     DB_HOST: str

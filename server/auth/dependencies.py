@@ -38,5 +38,7 @@ async def get_user_id(
         user = await auth_service.get_user_by_raw_key(raw_key=tg_id)
 
     if not user:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND.value, detail="User not found")
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND.value, detail="User not found"
+        )
     return user.id

@@ -19,4 +19,3 @@ class ApiInfo(BaseModel):
     version: str = Field(
         description="Текущая версия сервиса", default=settings.API_VERSION
     )
-

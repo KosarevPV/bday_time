@@ -1,4 +1,5 @@
 from http import HTTPStatus
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -16,13 +17,18 @@ class AuthService:
     def __init__(self, uow: IUnitOfWork):
         self.uow = uow
 
+    async def get_all_users(self) -> list[UserRead]:
+        async with self.uow:
+            users: list[User] = await self.uow.auth.get_all()
+            result: list[UserRead] = [UserRead.model_validate(user) for user in users]
+            return result
+
     async def get_user_by_raw_key(self, raw_key: str) -> UserRead:
         """
         Получить User ID по "сырому" ключу.
         :param raw_key: Исходный ("сырой") ключ.
         :return: Идентификатор ключа, если он найден в БД.
         """
-
         async with self.uow:
             user: User = await self.uow.auth.get_by_key(
                 key="key", value=generate_hmac_sha256(raw_key, settings.APP_SECRET_KEY)
@@ -30,10 +36,16 @@ class AuthService:
             result: UserRead = UserRead.model_validate(user)
             return result
 
+    async def get_user_by_id(self, id: UUID) -> UserRead:
+        async with self.uow:
+            user: User = await self.uow.auth.get_by_key(key="id", value=id)
+            result: UserRead = UserRead.model_validate(user)
+            return result
+
     async def create_user(self, user: UserCreate) -> UserRead:
         user_dict: dict[str, Any] = user.model_dump()
         async with self.uow:
-            model: User = await self.uow.auth.create_one(user_dict)
+            model: User = await self.uow.auth.get_or_create_one(user_dict)
             result: UserRead = UserRead.model_validate(model)
             await self.uow.commit()
 

@@ -52,8 +52,11 @@ async def root() -> ApiInfo:
 async def root1(request: Request) -> UUID:
     """Корень."""
     return templates.TemplateResponse(
-        request=request, name="main.html", context={"data": [
-                {"name": "test", "day": "1", "month": "1", "year": "2000"}, 
+        request=request,
+        name="main.html",
+        context={
+            "data": [
+                {"name": "test", "day": "1", "month": "1", "year": "2000"},
                 {"name": "test1", "day": "10", "month": "1", "year": "2001"},
                 {"name": "test2", "day": "31", "month": "1", "year": "2001"},
                 {"name": "test2", "day": "31", "month": "1", "year": "2001"},
@@ -62,6 +65,6 @@ async def root1(request: Request) -> UUID:
                 {"name": "test2", "day": "20", "month": "12", "year": "2001"},
                 {"name": "test2", "day": "15", "month": "11", "year": "2001"},
                 {"name": "test2", "day": "12", "month": "1", "year": "2001"},
-                ]
-            }
-        )
+            ]
+        },
+    )

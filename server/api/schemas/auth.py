@@ -4,6 +4,7 @@ Cхемы ApiKey.
 
 __author__ = "pv.kosarev"
 
+from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -17,6 +18,7 @@ class UserCreate(BaseModel):
 
     key: str
     note: str = Field(max_length=64, default="")
+    data: dict = Field(default={})
 
     @field_validator("key")
     @classmethod
@@ -32,3 +34,5 @@ class UserRead(BaseModel):
     id: UUID
     key: str = Field(max_length=64)
     note: str = Field(max_length=64)
+    data: dict
+    created: datetime

@@ -3,10 +3,14 @@ from typing import Any
 
 from server.db.database import async_session_maker
 from server.repositories.auth_repository import AuthRepository
+from server.repositories.birthday_repository import BirthdayRepository
+from server.repositories.notification_repositories import NotificationRepository
 
 
 class IUnitOfWork(ABC):
     auth: AuthRepository
+    birthday: BirthdayRepository
+    notification: NotificationRepository
 
     @abstractmethod
     def __init__(self) -> None: ...
@@ -35,6 +39,8 @@ class UnitOfWork(IUnitOfWork):
         self.session = self.session_factory()
 
         self.auth = AuthRepository(self.session)
+        self.birthday = BirthdayRepository(self.session)
+        self.notification = NotificationRepository(self.session)
 
     async def __aexit__(self, *args: Any) -> None:
         await self.rollback()

@@ -1,15 +1,21 @@
 from datetime import datetime
 import logging
+import random
 from aiogram import F, Router
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, ReplyKeyboardRemove
 
-from text import ENTER_BIRTHDAY_DAY_EN, ENTER_BIRTHDAY_MONTH_EN, ENTER_BIRTHDAY_NAME_EN, ENTER_BIRTHDAY_YEAR_EN
-from keyboards.birthdays import add_birthday_keyboard
+from backend_client import BackendClient
+from text import (
+    ENTER_BIRTHDAY_DAY_EN,
+    ENTER_BIRTHDAY_MONTH_EN,
+    ENTER_BIRTHDAY_NAME_EN,
+    ENTER_BIRTHDAY_YEAR_EN,
+)
+from keyboards.birthdays import cancel_keyboard
 from keyboards.start import start_keyboard
-from keyboards.simple_row import make_row_keyboard
 
 
 logging.basicConfig(level=logging.INFO)
@@ -23,13 +29,10 @@ class BirthdayCreation(StatesGroup):
     name = State()
 
 
-@router.message(StateFilter(None), F.text.lower() == "add birthday")
+@router.message(StateFilter(None), F.text.lower() == "🎉 add birthday")
 @router.message(StateFilter(None), Command("add"))
 async def cmd_birthday_add(message: Message, state: FSMContext):
-    await message.answer(
-        text=ENTER_BIRTHDAY_YEAR_EN,
-        reply_markup=add_birthday_keyboard()
-    )
+    await message.answer(text=ENTER_BIRTHDAY_YEAR_EN, reply_markup=cancel_keyboard())
     # Устанавливаем пользователю состояние "выбирает год"
     await state.set_state(BirthdayCreation.year)
 
@@ -53,14 +56,11 @@ async def introduce_year(message: Message, state: FSMContext):
     except Exception as e:
         logging.error(e)
         await message.answer(
-            text=f"{e}. {ENTER_BIRTHDAY_YEAR_EN}",
-            reply_markup=add_birthday_keyboard()
+            text=f"{e}. {ENTER_BIRTHDAY_YEAR_EN}", reply_markup=cancel_keyboard()
         )
         return
     await state.update_data(year=message.text.lower())
-    await message.answer(
-        text=ENTER_BIRTHDAY_MONTH_EN
-    )
+    await message.answer(text=ENTER_BIRTHDAY_MONTH_EN)
     await state.set_state(BirthdayCreation.month)
 
 
@@ -84,8 +84,7 @@ async def introduce_month(message: Message, state: FSMContext):
         await is_month_validate(message.text, state)
     except Exception as e:
         await message.answer(
-            text=f"{e}. {ENTER_BIRTHDAY_MONTH_EN}",
-            reply_markup=add_birthday_keyboard()
+            text=f"{e}. {ENTER_BIRTHDAY_MONTH_EN}", reply_markup=cancel_keyboard()
         )
         return
     await state.update_data(month=message.text.lower())
@@ -102,11 +101,10 @@ async def is_day_validate(day: str, state: FSMContext) -> bool:
         state_year = int(state_data.get("year"))
         state_date = datetime(int(state_year), int(state_month), int(day))
         if state_date > datetime.now():
-            raise Exception("The introduced day has not yet arrived")  
+            raise Exception("The introduced day has not yet arrived")
     except ValueError:
         return ValueError("Month is not valid")
     return True
-
 
 
 @router.message(
@@ -117,8 +115,7 @@ async def introduce_day(message: Message, state: FSMContext):
         await is_day_validate(message.text, state=state)
     except Exception as e:
         await message.answer(
-            text=f"{e}. {ENTER_BIRTHDAY_DAY_EN}",
-            reply_markup=add_birthday_keyboard()
+            text=f"{e}. {ENTER_BIRTHDAY_DAY_EN}", reply_markup=cancel_keyboard()
         )
         return
     await state.update_data(day=message.text.lower())
@@ -137,7 +134,6 @@ def is_name_validate(name: str) -> bool:
     return True
 
 
-
 @router.message(
     BirthdayCreation.name,
 )
@@ -146,16 +142,96 @@ async def introduce_name(message: Message, state: FSMContext):
         is_name_validate(message.text)
     except Exception as e:
         await message.answer(
-            text=f"{e}. {ENTER_BIRTHDAY_NAME_EN}",
-            reply_markup=add_birthday_keyboard()
+            text=f"{e}. {ENTER_BIRTHDAY_NAME_EN}", reply_markup=cancel_keyboard()
         )
         return
-    await state.update_data(name=message.text.lower())
+    await state.update_data(name=message.text)
     birthday_data = await state.get_data()
     logging.info(birthday_data)
+
+    client = BackendClient(message.from_user.id)
+    await client.create_birthday(
+        name=birthday_data["name"],
+        year=int(birthday_data["year"]),
+        month=int(birthday_data["month"]),
+        day=int(birthday_data["day"]),
+    )
+
     await message.answer(
-        text=f"\U0001F381 <b>Successfully added birthday for {birthday_data['name']} on {birthday_data['day']}.{birthday_data['month']}.{birthday_data['year']}</b> \U0001F381",
+        text=f"\U0001f381 <b>Successfully added birthday for {birthday_data['name']} on {birthday_data['day']}.{birthday_data['month']}.{birthday_data['year']}</b>",
         reply_markup=start_keyboard(),
-        parse_mode='HTML'
+        parse_mode="HTML",
     )
     await state.clear()
+
+
+class BirthdayDeletion(StatesGroup):
+    choosing_birthday = State()
+
+
+@router.message(StateFilter(None), F.text.lower() == "🗑️ delete birthday")
+@router.message(StateFilter(None), Command("delete"))
+async def cmd_birthday_delete(message: Message, state: FSMContext):
+    client = BackendClient(message.from_user.id)
+    birthdays = await client.get_list_birthdays()
+    if not birthdays:
+        await state.clear()
+        await message.answer("📭 Birthday list is empty", reply_markup=start_keyboard())
+        return
+    deletion_choose_message = "Choose number of birthday you want to delete:\n"
+    for n, birthday in enumerate(birthdays):
+        deletion_choose_message += f"{n + 1}) {birthday['name']} on {birthday['day']}.{birthday['month']}.{birthday['year']}\n"
+
+    await state.update_data(
+        deletion_message=deletion_choose_message, birthdays=birthdays
+    )
+
+    await message.answer(text=deletion_choose_message, reply_markup=cancel_keyboard())
+    await state.set_state(BirthdayDeletion.choosing_birthday)
+
+
+@router.message(BirthdayDeletion.choosing_birthday)
+async def process_birthday_choice(message: Message, state: FSMContext):
+    # Получаем данные из состояния
+    state_data = await state.get_data()
+    deletion_message = state_data.get("deletion_message")
+    birthdays = state_data.get("birthdays", [])
+
+    # Используем deletion_message при необходимости
+    if message.text.isdigit():
+        choice = int(message.text)
+        if 1 <= choice <= len(birthdays):
+            selected_birthday = birthdays[choice - 1]
+            client = BackendClient(message.from_user.id)
+            birthdays = await client.delete_birthday(selected_birthday["id"])
+            await message.answer(
+                f"❌ Deleting birthday for {selected_birthday['name']}",
+                reply_markup=start_keyboard(),
+            )
+            await state.clear()
+        else:
+            await message.answer(
+                f"Wrong number. {deletion_message}", reply_markup=cancel_keyboard()
+            )
+    else:
+        await message.answer(
+            f"Wrong number. {deletion_message}", reply_markup=cancel_keyboard()
+        )
+
+
+@router.message(StateFilter(None), F.text.lower() == "📋 list birthdays")
+@router.message(StateFilter(None), Command("list"))
+async def cmd_birthday_list(message: Message):
+    client = BackendClient(message.from_user.id)
+    birthdays = await client.get_list_birthdays()
+    if not birthdays:
+        await message.answer("📭 Birthday list is empty", reply_markup=start_keyboard())
+        return
+    birthdays_message = "🎉 <b>Your birthdays:</b>\n\n"
+    birthday_emojis = ["🎂", "🎁", "🎈", "🥳", "🎊", "🎇", "✨", "🥂", "🍾", "🎉", "🎀", "🏆", "👑", "🕯️", "🌟", "🎵", "💝", "🍰", "🍭", "🎪"]
+    
+    for n, birthday in enumerate(birthdays, 1):
+        emoji = random.choice(birthday_emojis)
+        birthdays_message += f"{n}. <b>{birthday['name']}</b> - {birthday['day']}.{birthday['month']}.{birthday['year']} {emoji} \n"
+    
+    await message.answer(text=birthdays_message, reply_markup=start_keyboard(), parse_mode="HTML")
